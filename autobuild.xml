@@ -24,9 +24,11 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>0ee0fceff4670dd67e8da3416d6d21fe</string>
+              <string>583da3fe476a6893fddb836c6f63ef67f0286eb4</string>
+              <key>hash_algorithm</key>
+              <string>sha1</string>
               <key>url</key>
-              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.4/zlib_ng-darwin64-2.0.4.tar.zst</string>
+              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.5/zlib_ng-darwin64-2.0.5.tar.zst</string>
             </map>
             <key>name</key>
             <string>darwin64</string>
@@ -36,9 +38,11 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>914646e7b0db2bef333760eb38128228</string>
+              <string>40be797317889dae5fefe70ad15f9c123cb24615</string>
+              <key>hash_algorithm</key>
+              <string>sha1</string>
               <key>url</key>
-              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.4/zlib_ng-linux64-2.0.4.tar.zst</string>
+              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.5/zlib_ng-linux64-2.0.5.tar.zst</string>
             </map>
             <key>name</key>
             <string>linux64</string>
@@ -48,9 +52,11 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>ab1adf0cc11706be3c0b29d416bc8b67</string>
+              <string>2aff13b89dd85746221d8b16c1becfa7a916dc2e</string>
+              <key>hash_algorithm</key>
+              <string>sha1</string>
               <key>url</key>
-              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.4/zlib_ng-windows-2.0.4.tar.zst</string>
+              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.5/zlib_ng-windows-2.0.5.tar.zst</string>
             </map>
             <key>name</key>
             <string>windows</string>
@@ -60,16 +66,18 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>b338b0d5278d3e914a11c0a96a871772</string>
+              <string>024e7a08562fa3b4e981b620eed9fa181a19e348</string>
+              <key>hash_algorithm</key>
+              <string>sha1</string>
               <key>url</key>
-              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.4/zlib_ng-windows64-2.0.4.tar.zst</string>
+              <string>https://github.com/secondlife/3p-zlib-ng/releases/download/v2.0.5/zlib_ng-windows64-2.0.5.tar.zst</string>
             </map>
             <key>name</key>
             <string>windows64</string>
           </map>
         </map>
         <key>version</key>
-        <string>2.0.4</string>
+        <string>2.0.5</string>
       </map>
     </map>
     <key>package_description</key>

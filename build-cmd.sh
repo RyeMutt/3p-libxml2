@@ -32,6 +32,9 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
+# remove_cxxstd
+source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
+
 # Different upstream versions seem to check in different snapshots in time of
 # the configure script.
 for confile in configure.in configure configure.ac
@@ -110,6 +113,7 @@ pushd "$TOP/$SOURCE_DIR"
 
             # Default target per autobuild build --address-size
             opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
+            opts="$(remove_cxxstd $opts)"
 
             # Handle any deliberate platform targeting
             if [ -z "${TARGET_CPPFLAGS:-}" ]; then
@@ -145,6 +149,7 @@ pushd "$TOP/$SOURCE_DIR"
 
         darwin*)
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
+            opts="$(remove_cxxstd $opts)"
 
             # Release last for configuration headers
             # CPPFLAGS will be used by configure and we need to

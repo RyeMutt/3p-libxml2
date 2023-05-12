@@ -151,6 +151,10 @@ pushd "$TOP/$SOURCE_DIR"
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
             opts="$(remove_cxxstd $opts)"
 
+	    # work around timestamps being inaccurate after recent git checkout resulting in spurious aclocal errors
+	    # see https://github.com/actions/checkout/issues/364#issuecomment-812618265
+	    touch *
+
             # Release last for configuration headers
             # CPPFLAGS will be used by configure and we need to
             # get the dependent packages in there as well.  Process

@@ -151,9 +151,9 @@ pushd "$TOP/$SOURCE_DIR"
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
             opts="$(remove_cxxstd $opts)"
 
-	    # work around timestamps being inaccurate after recent git checkout resulting in spurious aclocal errors
-	    # see https://github.com/actions/checkout/issues/364#issuecomment-812618265
-	    touch *
+            # work around timestamps being inaccurate after recent git checkout resulting in spurious aclocal errors
+            # see https://github.com/actions/checkout/issues/364#issuecomment-812618265
+            touch *
 
             # Release last for configuration headers
             # CPPFLAGS will be used by configure and we need to
@@ -163,7 +163,8 @@ pushd "$TOP/$SOURCE_DIR"
             CFLAGS="$opts -I$stage/packages/include/zlib-ng" \
                 CPPFLAGS="${CPPFLAGS:-} -I$stage/packages/include/zlib-ng" \
                 LDFLAGS="$opts -L$stage/packages/lib/release" \
-                ./configure --with-python=no --with-pic --with-zlib \
+                ./configure \
+                --with-iconv=no --with-lzma=no --with-pic --with-python=no --with-zlib \
                 --disable-shared --enable-static \
                 --prefix="$stage" --libdir="$stage"/lib/release
             make

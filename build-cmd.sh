@@ -32,6 +32,9 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
+# remove_cxxstd
+source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
+
 # Different upstream versions seem to check in different snapshots in time of
 # the configure script.
 for confile in configure.in configure configure.ac
@@ -53,27 +56,6 @@ pushd "$TOP/$SOURCE_DIR"
 
         windows*)
             load_vsvars
-
-            # We've observed some weird failures in which the PATH is too big
-            # to be passed to a child process! When that gets munged, we start
-            # seeing errors like 'nmake' failing to find the 'cl.exe' command.
-            # Thing is, by this point in the script we've acquired a shocking
-            # number of duplicate entries. Dedup the PATH using Python's
-            # OrderedDict, which preserves the order in which you insert keys.
-            # We find that some of the Visual Studio PATH entries appear both
-            # with and without a trailing slash, which is pointless. Strip
-            # those off and dedup what's left.
-            # Pass the existing PATH as an explicit argument rather than
-            # reading it from the environment, to bypass the fact that cygwin
-            # implicitly converts PATH to Windows form when running a native
-            # executable. Since we're setting bash's PATH, leave everything in
-            # cygwin form. That means splitting and rejoining on ':' rather
-            # than on os.pathsep, which on Windows is ';'.
-            # Use python -u, else the resulting PATH will end with a spurious
-            # '\r'.
-            export PATH="$(python -u -c "import sys
-from collections import OrderedDict
-print(':'.join(OrderedDict((dir.rstrip('/'), 1) for dir in sys.argv[1].split(':'))))" "$PATH")"
 
             mkdir -p "$stage/lib/release"
 
@@ -131,6 +113,7 @@ print(':'.join(OrderedDict((dir.rstrip('/'), 1) for dir in sys.argv[1].split(':'
 
             # Default target per autobuild build --address-size
             opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
+            opts="$(remove_cxxstd $opts)"
 
             # Handle any deliberate platform targeting
             if [ -z "${TARGET_CPPFLAGS:-}" ]; then
@@ -141,6 +124,7 @@ print(':'.join(OrderedDict((dir.rstrip('/'), 1) for dir in sys.argv[1].split(':'
                 export CPPFLAGS="$TARGET_CPPFLAGS"
             fi
 
+            autoreconf --force --install
             # Release
             # CPPFLAGS will be used by configure and we need to
             # get the dependent packages in there as well.  Process
@@ -165,6 +149,11 @@ print(':'.join(OrderedDict((dir.rstrip('/'), 1) for dir in sys.argv[1].split(':'
 
         darwin*)
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
+            opts="$(remove_cxxstd $opts)"
+
+            # work around timestamps being inaccurate after recent git checkout resulting in spurious aclocal errors
+            # see https://github.com/actions/checkout/issues/364#issuecomment-812618265
+            touch *
 
             # Release last for configuration headers
             # CPPFLAGS will be used by configure and we need to
@@ -174,7 +163,8 @@ print(':'.join(OrderedDict((dir.rstrip('/'), 1) for dir in sys.argv[1].split(':'
             CFLAGS="$opts -I$stage/packages/include/zlib-ng" \
                 CPPFLAGS="${CPPFLAGS:-} -I$stage/packages/include/zlib-ng" \
                 LDFLAGS="$opts -L$stage/packages/lib/release" \
-                ./configure --with-python=no --with-pic --with-zlib \
+                ./configure \
+                --with-iconv=no --with-lzma=no --with-pic --with-python=no --with-zlib \
                 --disable-shared --enable-static \
                 --prefix="$stage" --libdir="$stage"/lib/release
             make

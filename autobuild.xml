@@ -93,6 +93,8 @@
       <string>LICENSES/libxml2.txt</string>
       <key>name</key>
       <string>libxml2</string>
+      <key>use_scm_version</key>
+      <boolean>true</boolean>
       <key>platforms</key>
       <map>
         <key>common</key>
@@ -217,8 +219,6 @@
           <string>windows</string>
         </map>
       </map>
-      <key>version_file</key>
-      <string>VERSION.txt</string>
     </map>
     <key>type</key>
     <string>autobuild</string>

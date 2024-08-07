@@ -1,0 +1,36 @@
+From 86710d15f73e280b89bf1bdabbf237b04b3e1190 Mon Sep 17 00:00:00 2001
+From: Rye Mutt <rye@alchemyviewer.org>
+Date: Wed, 7 Aug 2024 15:16:59 -0400
+Subject: [PATCH] Patch CMakeLists to use static prebuilt
+
+---
+ CMakeLists.txt | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f99fd368..619664bf 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -116,7 +116,9 @@ if(LIBXML2_WITH_THREADS)
+ endif()
+ 
+ if(LIBXML2_WITH_ZLIB)
+-    find_package(ZLIB REQUIRED)
++    #find_package(ZLIB REQUIRED)
++    set(ZLIB_FOUND ON)
++    include_directories(${ZLIB_INCLUDE_DIRS})
+ endif()
+ 
+ if (NOT MSVC)
+@@ -400,7 +402,7 @@ if(LIBXML2_WITH_THREADS)
+ endif()
+ 
+ if(LIBXML2_WITH_ZLIB)
+-    target_link_libraries(LibXml2 PRIVATE ZLIB::ZLIB)
++    target_link_libraries(LibXml2 PRIVATE ${ZLIB_LIBRARIES})
+     set(ZLIB_LDFLAGS "-lz")
+     list(APPEND XML_PRIVATE_LIBS "${ZLIB_LDFLAGS}")
+     pkg_check_modules(ZLIB_PC IMPORTED_TARGET zlib)
+-- 
+2.45.2.windows.1
+

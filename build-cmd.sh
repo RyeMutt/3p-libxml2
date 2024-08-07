@@ -35,48 +35,57 @@ source_environment_tempfile="$stage/source_environment.sh"
 # remove_cxxstd
 source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
 
+apply_patch()
+{
+    local patch="$1"
+    local path="$2"
+    echo "Applying $patch..."
+    git apply --check --directory="$path" "$patch" && git apply --directory="$path" "$patch"
+}
+
+pushd "$TOP"
+
+apply_patch "patches/0001-Patch-CMakeLists-to-use-static-prebuilt.patch" "libxml2"
+
+popd
+
 pushd "$TOP/$SOURCE_DIR"
     case "$AUTOBUILD_PLATFORM" in
 
         windows*)
             load_vsvars
 
+            # Setup staging dirs
+            mkdir -p "$stage/include"
             mkdir -p "$stage/lib/release"
 
-            pushd "win32"
+            mkdir -p "build"
+            pushd "build"
+                cmake -G Ninja .. -DCMAKE_BUILD_TYPE=Release \
+                    -DCMAKE_INSTALL_PREFIX="$(cygpath -m $stage)/release" \
+                    -DBUILD_SHARED_LIBS=OFF \
+                    -DLIBXML2_WITH_ICONV=OFF \
+                    -DLIBXML2_WITH_LZMA=OFF \
+                    -DLIBXML2_WITH_PYTHON=OFF \
+                    -DLIBXML2_WITH_ZLIB=ON \
+                    -DZLIB_INCLUDE_DIRS="$(cygpath -m $stage)/packages/include/zlib-ng/" \
+                    -DZLIB_LIBRARIES="$(cygpath -m $stage)/packages/lib/release/zlib.lib" \
+                    -DZLIB_LIBRARY_DIRS="$(cygpath -m $stage)/packages/lib"
 
-                cscript configure.js zlib=yes icu=no static=yes debug=no python=no iconv=no \
-                    compiler=msvc \
-                    include="$(cygpath -w $stage/packages/include);$(cygpath -w $stage/packages/include/zlib-ng)" \
-                    lib="$(cygpath -w $stage/packages/lib/release)" \
-                    prefix="$(cygpath -w $stage)" \
-                    sodir="$(cygpath -w $stage/lib/release)" \
-                    libdir="$(cygpath -w $stage/lib/release)"
-
-                nmake /f Makefile.msvc ZLIB_LIBRARY=zlib.lib all
-                nmake /f Makefile.msvc install
+                cmake --build . --config Release
+                cmake --install . --config Release
 
                 # conditionally run unit tests
                 if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    # There is one particular test .xml file that has started
-                    # failing consistently on our Windows build hosts. The
-                    # file is full of errors; but it's as if the test harness
-                    # has forgotten that this particular test is SUPPOSED to
-                    # produce errors! We can bypass it simply by renaming the
-                    # file: the test is based on picking up *.xml from that
-                    # directory.
-                    # Don't forget, we're in libxml2/win32 at the moment.
-                    badtest="$TOP/$SOURCE_DIR/test/errors/759398.xml"
-                    [ -f "$badtest" ] && mv "$badtest" "$badtest.hide"
-                    nmake /f Makefile.msvc checktests
-                    # Make sure we move it back after testing. It's not good
-                    # for a build script to leave modifications to a source
-                    # tree that's under version control.
-                    [ -f "$badtest.hide" ] && mv "$badtest.hide" "$badtest"
+                    ctest -C Release
                 fi
-
-                nmake /f Makefile.msvc clean
             popd
+
+            # Copy libraries
+            cp -a ${stage}/release/lib/libxml2s.lib ${stage}/lib/release/libxml2.lib
+
+            # copy headers
+            cp -a $stage/release/include/* $stage/include/
         ;;
 
         linux*)
@@ -84,67 +93,77 @@ pushd "$TOP/$SOURCE_DIR"
             opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
             opts="$(remove_cxxstd $opts)"
 
-            # Handle any deliberate platform targeting
-            if [ -z "${TARGET_CPPFLAGS:-}" ]; then
-                # Remove sysroot contamination from build environment
-                unset CPPFLAGS
-            else
-                # Incorporate special pre-processing flags
-                export CPPFLAGS="$TARGET_CPPFLAGS"
-            fi
+            # Setup staging dirs
+            mkdir -p "$stage/include"
+            mkdir -p "$stage/lib"
+            mkdir -p $stage/lib/release/
 
-            autoreconf --force --install
-            # Release
-            # CPPFLAGS will be used by configure and we need to
-            # get the dependent packages in there as well.  Process
-            # may find the system zlib.h but it won't find the
-            # packaged one.
-            CFLAGS="$opts -I$stage/packages/include/zlib-ng" \
-                CPPFLAGS="${CPPFLAGS:-} -I$stage/packages/include/zlib-ng" \
-                LDFLAGS="$opts -L$stage/packages/lib/release" \
-                ./configure --with-python=no --with-pic --with-zlib \
-                --disable-shared --enable-static -with-lzma=no \
-                --prefix="$stage" --libdir="$stage"/lib/release
-            make
-            make install
+            mkdir -p "build_release"
+            pushd "build_release"
+                CFLAGS="$opts" \
+                cmake .. -GNinja -DBUILD_SHARED_LIBS:BOOL=OFF \
+                    -DCMAKE_BUILD_TYPE="Release" \
+                    -DCMAKE_C_FLAGS="$opts" \
+                    -DCMAKE_INSTALL_PREFIX="$stage" \
+                    -DLIBXML2_WITH_ICONV=ON \
+                    -DLIBXML2_WITH_LZMA=OFF \
+                    -DLIBXML2_WITH_PYTHON=OFF \
+                    -DLIBXML2_WITH_ZLIB=ON \
+                    -DZLIB_INCLUDE_DIRS="$stage/packages/include/zlib-ng/" \
+                    -DZLIB_LIBRARIES="$stage/packages/lib/release/libz.a"
 
-            # conditionally run unit tests
-            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                make check
-            fi
+                cmake --build . --config Release
 
-            make clean
+                # conditionally run unit tests
+                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                    ctest -C Release
+                fi
+
+                cmake --install . --config Release
+
+                mv $stage/lib/*.a $stage/lib/release/
+            popd
         ;;
 
         darwin*)
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
             opts="$(remove_cxxstd $opts)"
 
-            # work around timestamps being inaccurate after recent git checkout resulting in spurious aclocal errors
-            # see https://github.com/actions/checkout/issues/364#issuecomment-812618265
-            touch *
+            # deploy target
+            export MACOSX_DEPLOYMENT_TARGET=${LL_BUILD_DARWIN_DEPLOY_TARGET}
 
-            # Release last for configuration headers
-            # CPPFLAGS will be used by configure and we need to
-            # get the dependent packages in there as well.  Process
-            # may find the system zlib.h but it won't find the
-            # packaged one.
-            CFLAGS="$opts -I$stage/packages/include/zlib-ng" \
-                CPPFLAGS="${CPPFLAGS:-} -I$stage/packages/include/zlib-ng" \
-                LDFLAGS="$opts -L$stage/packages/lib/release" \
-                ./configure \
-                --with-iconv=no --with-lzma=no --with-pic --with-python=no --with-zlib \
-                --disable-shared --enable-static \
-                --prefix="$stage" --libdir="$stage"/lib/release
-            make
-            make install
+            # Setup staging dirs
+            mkdir -p "$stage/include"
+            mkdir -p "$stage/lib"
+            mkdir -p $stage/lib/release/
 
-            # conditionally run unit tests
-            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                make check
-            fi
+            mkdir -p "build"
+            pushd "build"
+                CFLAGS="$opts" \
+                cmake .. -GNinja -DBUILD_SHARED_LIBS:BOOL=OFF \
+                    -DCMAKE_BUILD_TYPE="Release" \
+                    -DCMAKE_C_FLAGS="$opts" \
+                    -DCMAKE_INSTALL_PREFIX="$stage" \
+                    -DLIBXML2_WITH_ICONV=ON \
+                    -DLIBXML2_WITH_LZMA=OFF \
+                    -DLIBXML2_WITH_PYTHON=OFF \
+                    -DLIBXML2_WITH_ZLIB=ON \
+                    -DZLIB_INCLUDE_DIRS="$stage/packages/include/zlib-ng/" \
+                    -DZLIB_LIBRARIES="$stage/packages/lib/release/libz.a" \
+                    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+                    -DCMAKE_OSX_ARCHITECTURES="x86_64"
 
-            make clean
+                cmake --build . --config Release
+
+                # conditionally run unit tests
+                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                    ctest -C Release
+                fi
+
+                cmake --install . --config Release
+
+                mv $stage/lib/*.a $stage/lib/release/
+            popd
         ;;
 
         *)
